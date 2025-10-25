@@ -1,0 +1,29 @@
+/**:
+  ros__parameters:
+    # Object class name
+    class_name: 'corn'
+
+    # Similarity threshold for binary mask generation
+    threshold: 0.5
+
+    # Device to use ('cuda' or 'cpu')
+    device: 'cuda'
+
+    # Input image size (images will be resized to input_size x input_size)
+    input_size: 480
+
+    # Directory containing prototype files
+    prototype_dir: '~/.ros/tarts_prototypes'
+
+    # SLIC superpixel parameters
+    slic_n_segments: 400
+    slic_compactness: 30.0
+
+    # Input image topic
+    image_topic: '/camera/color/image_raw'
+
+    # Visualization alpha blending value
+    visualization_alpha: 0.5
+
+    # Enable debug output
+    debug: false
