@@ -62,55 +62,36 @@
     # Default: no rotation (identity quaternion)
     camera_rotation: [0.0, 0.0, 0.0, 1.0]
 
-    # --- Optimal Supervision Node Selection Parameters ---
-    # 最佳监督节点选择参数
+    # --- Optimal Prototype Update Node Selection Parameters ---
     #
-    # These parameters control the intelligent selection of supervision nodes
+    # These parameters control the intelligent selection of prototype update nodes
     # for footprint projection, ensuring good visibility and projection quality.
-    # 这些参数控制监督节点的智能选择，以确保良好的可见性和投影质量。
 
     # Minimum observation distance (meters)
-    # 最小观察距离（米）
-    # The minimum distance from footprint center to supervision node.
+    # The minimum distance from footprint center to prototype update node.
     # Ensures footprint is within camera field of view (1m+ recommended).
-    # 从足迹中心到监督节点的最小距离。
-    # 确保足迹在相机视野内（推荐1米以上）。
     min_observation_distance: 1.0
 
     # High-quality projection threshold [0.0-1.0]
-    # 高质量投影阈值 [0.0-1.0]
     # Ratio of footprint points that must project validly into image.
     # First pass: only nodes with ≥80% valid projection are considered.
-    # 足迹点有效投影到图像中的比例。
-    # 第一遍搜索：只考虑≥80%有效投影的节点。
     high_quality_projection_threshold: 0.8
 
     # High-quality depth threshold [0.0-1.0]
-    # 高质量深度阈值 [0.0-1.0]
     # Ratio of footprint points that must be in front of camera (positive depth).
     # First pass: only nodes with ≥90% valid depth are considered.
-    # 足迹点位于相机前方（正深度）的比例。
-    # 第一遍搜索：只考虑≥90%有效深度的节点。
     high_quality_depth_threshold: 0.9
 
     # Fallback projection threshold [0.0-1.0]
-    # 备选投影阈值 [0.0-1.0]
     # If no high-quality nodes found, lower threshold to 50% in second pass.
     # Prevents update failure when camera viewing conditions are suboptimal.
-    # 如果未找到高质量节点，在第二遍搜索中降低阈值至50%。
-    # 防止相机观察条件不理想时更新失败。
     fallback_projection_threshold: 0.5
 
     # Fallback depth threshold [0.0-1.0]
-    # 备选深度阈值 [0.0-1.0]
     # If no high-quality nodes found, lower depth threshold to 70% in second pass.
-    # 如果未找到高质量节点，在第二遍搜索中降低深度阈值至70%。
     fallback_depth_threshold: 0.7
 
     # Perfect projection threshold [0.0-1.0]
-    # 完美投影阈值 [0.0-1.0]
     # Early stopping: if node has ≥95% valid projection, stop searching.
     # Improves efficiency by avoiding unnecessary candidate evaluation.
-    # 提前停止：如果节点有≥95%有效投影，停止搜索。
-    # 通过避免不必要的候选评估来提高效率。
     perfect_projection_threshold: 0.95

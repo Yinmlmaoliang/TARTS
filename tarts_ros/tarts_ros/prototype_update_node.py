@@ -75,7 +75,7 @@ class PrototypeUpdateNode(Node):
         self.declare_parameter('camera_rotation', [0.0, 0.0, 0.0, 1.0])  # quat (x,y,z,w)
         self.declare_parameter('debug', False)
 
-        # Supervision node selection parameters
+        # Prototype Update Node selection parameters
         self.declare_parameter('min_observation_distance', 1.0)
         self.declare_parameter('high_quality_projection_threshold', 0.8)
         self.declare_parameter('high_quality_depth_threshold', 0.9)
@@ -98,7 +98,7 @@ class PrototypeUpdateNode(Node):
         self.camera_rotation = self.get_parameter('camera_rotation').value
         self.debug = self.get_parameter('debug').value
 
-        # Get supervision node selection parameters
+        # Get prototype update node selection parameters
         self.min_observation_distance = self.get_parameter('min_observation_distance').value
         self.high_quality_projection_threshold = self.get_parameter('high_quality_projection_threshold').value
         self.high_quality_depth_threshold = self.get_parameter('high_quality_depth_threshold').value
@@ -313,20 +313,20 @@ class PrototypeUpdateNode(Node):
                 f'Points: {footprint.shape[0]}'
             )
 
-            # Select optimal supervision node for projection
-            optimal_supervision_node = self._select_optimal_supervision_from_cache(
+            # Select optimal prototype update node for projection
+            optimal_prototype_update_node = self._select_optimal_prototype_update_from_cache(
                 current_node, prev_node
             )
 
-            if optimal_supervision_node is None:
-                self.get_logger().warn('No suitable supervision node found, skipping update')
+            if optimal_prototype_update_node is None:
+                self.get_logger().warn('No suitable prototype update node found, skipping update')
                 return
 
-            # Project footprint to image plane using optimal supervision node
-            pose_batch = optimal_supervision_node.pose_cam_in_world.unsqueeze(0)
+            # Project footprint to image plane using optimal prototype update node
+            pose_batch = optimal_prototype_update_node.pose_cam_in_world.unsqueeze(0)
             color = torch.ones((3,), device=footprint.device)
 
-            mask, _, _, _, bi_mask = optimal_supervision_node.image_projector.project_and_render(
+            mask, _, _, _, bi_mask = optimal_prototype_update_node.image_projector.project_and_render(
                 pose_batch, footprint[None], color
             )
 
@@ -336,9 +336,9 @@ class PrototypeUpdateNode(Node):
                 return
 
             # Extract positive features from footprint regions
-            # Note: Must use optimal_supervision_node's features since bi_mask is in its coordinate frame
+            # Note: Must use optimal_prototype_update_node's features since bi_mask is in its coordinate frame
             pos_features = self._extract_positive_features(
-                bi_mask, optimal_supervision_node.seg_tensor, optimal_supervision_node.sparse_features
+                bi_mask, optimal_prototype_update_node.seg_tensor, optimal_prototype_update_node.sparse_features
             )
 
             if pos_features.shape[0] == 0:
@@ -426,9 +426,9 @@ class PrototypeUpdateNode(Node):
             traceback.print_exc()
             return torch.empty((0, sparse_features.shape[1]), device=sparse_features.device)
 
-    def _select_optimal_supervision_from_cache(self, current_node, prev_node):
+    def _select_optimal_prototype_update_from_cache(self, current_node, prev_node):
         """
-        Select optimal supervision node from cache based on footprint projection validity.
+        Select optimal prototype update node from cache based on footprint projection validity.
 
         This method finds the best node for projecting the footprint by:
         1. Ensuring minimum observation distance (≥1m from footprint center)
@@ -441,7 +441,7 @@ class PrototypeUpdateNode(Node):
             prev_node: Previous node for footprint generation
 
         Returns:
-            DataNode: Best supervision node or None if no suitable node found
+            DataNode: Best prototype update node or None if no suitable node found
         """
         try:
             # Calculate footprint center position
@@ -470,7 +470,7 @@ class PrototypeUpdateNode(Node):
             candidates.sort(key=lambda x: x[1])
 
             self.get_logger().debug(
-                f'Evaluating {len(candidates)} candidate nodes for supervision '
+                f'Evaluating {len(candidates)} candidate nodes for prototype update '
                 f'(min distance: {self.min_observation_distance}m)'
             )
 
@@ -557,19 +557,19 @@ class PrototypeUpdateNode(Node):
                 node_pos = best_node.pose_base_in_world[:3, 3]
                 actual_distance = torch.norm(node_pos - footprint_center).item()
                 self.get_logger().info(
-                    f"Selected optimal supervision node - Distance: {actual_distance:.2f}m, "
+                    f"Selected optimal prototype update node - Distance: {actual_distance:.2f}m, "
                     f"Projection quality score: {best_score:.3f}, "
                     f"Time offset: {prev_node.timestamp - best_node.timestamp:.2f}s"
                 )
             else:
                 self.get_logger().warn(
-                    "No suitable supervision node found - all candidates have poor projection quality"
+                    "No suitable prototype update node found - all candidates have poor projection quality"
                 )
 
             return best_node
 
         except Exception as e:
-            self.get_logger().error(f"Error selecting optimal supervision from cache: {e}")
+            self.get_logger().error(f"Error selecting optimal prototype update from cache: {e}")
             import traceback
             traceback.print_exc()
             return None

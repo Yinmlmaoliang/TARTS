@@ -77,11 +77,11 @@ def generate_launch_description():
         description='Enable debug output'
     )
 
-    # Supervision node selection arguments
+    # Prototype Update Node selection arguments
     min_observation_distance_arg = DeclareLaunchArgument(
         'min_observation_distance',
         default_value='1.0',
-        description='Minimum observation distance for supervision node (meters)'
+        description='Minimum observation distance for prototype update node (meters)'
     )
 
     high_quality_projection_threshold_arg = DeclareLaunchArgument(
@@ -174,7 +174,7 @@ def generate_launch_description():
             'camera_translation': [0.2, 0.0, 0.41],
             'camera_rotation': [0.0, 0.0, 0.0, 1.0],  # quaternion (x, y, z, w)
             'debug': debug,
-            # Supervision node selection parameters
+            # Prototype Update Node selection parameters
             'min_observation_distance': min_observation_distance,
             'high_quality_projection_threshold': high_quality_projection_threshold,
             'high_quality_depth_threshold': high_quality_depth_threshold,

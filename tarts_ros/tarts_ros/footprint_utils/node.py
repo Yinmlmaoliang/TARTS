@@ -136,7 +136,7 @@ class DataNode(BaseNode):
         self._height = height
 
         self._features = None
-        self._supervision_mask = None
+        self._prototype_update_mask = None
         self._patch_labels = None
         # print("pose base in world: ", self._pose_base_in_world)
         # print("pose camera in world: ", self._pose_cam_in_world)
@@ -235,8 +235,8 @@ class DataNode(BaseNode):
         return self._pose_cam_in_world
     
     @property
-    def supervision_mask(self):
-        return self._supervision_mask
+    def prototype_update_mask(self):
+        return self._prototype_update_mask
     
     @property
     def patch_labels(self):
@@ -262,9 +262,9 @@ class DataNode(BaseNode):
     def pose_cam_in_world(self, pose_cam_in_world):
         self._pose_cam_in_world = pose_cam_in_world
     
-    @supervision_mask.setter
-    def supervision_mask(self, supervision_mask):
-        self._supervision_mask = supervision_mask
+    @prototype_update_mask.setter
+    def prototype_update_mask(self, prototype_update_mask):
+        self._prototype_update_mask = prototype_update_mask
 
     @patch_labels.setter
     def patch_labels(self, patch_labels):
