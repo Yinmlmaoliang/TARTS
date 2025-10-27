@@ -87,6 +87,7 @@ class PrototypeUpdateNode(Node):
         self.class_name = self.get_parameter('class_name').value
         device = self.get_parameter('device').value
         prototype_dir = self.get_parameter('prototype_dir').value
+        self.prototype_dir = prototype_dir  # Store for saving updated prototype
         self.momentum = self.get_parameter('momentum').value
         self.update_interval = self.get_parameter('update_interval').value
         self.cache_interval = self.get_parameter('cache_interval').value
@@ -359,6 +360,10 @@ class PrototypeUpdateNode(Node):
             update_msg = Float32()
             update_msg.data = float(self.update_count)
             self.update_pub.publish(update_msg)
+
+            # Save prototype after each update
+            self.prototype_manager.save(os.path.join(self.prototype_dir, f'{self.class_name}.pt'))
+            self.get_logger().info(f'Prototype saved to {os.path.join(self.prototype_dir, f"{self.class_name}.pt")}')
 
             t_elapsed = (time.time() - t_start) * 1000
 

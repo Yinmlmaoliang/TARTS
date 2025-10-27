@@ -62,6 +62,7 @@ class TartsSegmentationNode(Node):
         device = self.get_parameter('device').value
         self.input_size = self.get_parameter('input_size').value
         prototype_dir = self.get_parameter('prototype_dir').value
+        self.prototype_dir = prototype_dir  # Store for prototype reload
         self.slic_n_segments = self.get_parameter('slic_n_segments').value
         self.slic_compactness = self.get_parameter('slic_compactness').value
         image_topic = self.get_parameter('image_topic').value
@@ -318,6 +319,11 @@ class TartsSegmentationNode(Node):
         # The prototype is updated in PrototypeManager, just log notification
         with self.lock:
             self.get_logger().info('Prototype updated by online adaptation')
+            # Reload the updated prototype
+            prototype_path = os.path.join(self.prototype_dir, f'{self.class_name}.pt')
+            self.get_logger().info(f'Reloading prototype from: {prototype_path}')
+            self.prototype = self.prototype_manager.load(prototype_path, verbose=False)
+            self.get_logger().info(f'Prototype reloaded successfully')
 
     def _publish_results(self, mask, vis_img, avg_similarity, header):
         """Publish segmentation results."""
