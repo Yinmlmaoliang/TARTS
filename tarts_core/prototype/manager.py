@@ -87,7 +87,7 @@ class PrototypeManager:
 
         return prototype
 
-    def save(self, prototype, save_path, metadata=None, normalize=True):
+    def save(self, prototype, save_path, metadata=None, normalize=True, verbose=True):
         """
         Save prototype to file.
 
@@ -96,6 +96,7 @@ class PrototypeManager:
             save_path (str): Path to save prototype (.pt)
             metadata (dict): Optional metadata to save with prototype
             normalize (bool): Whether to L2-normalize before saving
+            verbose (bool): Whether to print save confirmation
         """
         # Expand user path
         save_path = os.path.expanduser(save_path)
@@ -122,7 +123,9 @@ class PrototypeManager:
 
         # Save
         torch.save(checkpoint, save_path)
-        print(f'Saved prototype to: {save_path}')
+
+        if verbose:
+            print(f'Saved prototype to: {save_path}')
 
     def validate(self, prototype, expected_dim=None):
         """

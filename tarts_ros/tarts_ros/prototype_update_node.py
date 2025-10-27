@@ -354,16 +354,16 @@ class PrototypeUpdateNode(Node):
             save_path = os.path.join(self.prototype_dir, f'{self.class_name}.pt')
             self.prototype_manager.save(
                 prototype=self.prototype_manager.get_prototype(),
-                save_path=save_path
+                save_path=save_path,
+                verbose=False  # Disable print output, use ROS logger instead
             )
-            self.get_logger().info(f'Prototype saved to {save_path}')
 
             t_elapsed = (time.time() - t_start) * 1000
 
             self.get_logger().info(
-                f'Prototype updated #{self.update_count} - '
+                f'Prototype updated and saved #{self.update_count} - '
                 f'Positive samples: {pos_features.shape[0]}, '
-                f'Total samples: {self.total_positive_samples}, '
+                f'Total: {self.total_positive_samples}, '
                 f'Time: {t_elapsed:.1f}ms'
             )
 
