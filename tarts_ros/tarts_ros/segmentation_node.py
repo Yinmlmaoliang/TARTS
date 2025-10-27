@@ -62,6 +62,10 @@ class TartsSegmentationNode(Node):
         self.declare_parameter('otsu_method', 'standard')
         self.declare_parameter('otsu_sigma', 1.0)
 
+        # Model parameters
+        self.declare_parameter('backbone_type', 'vits16')
+        self.declare_parameter('dropout_p', 0.0)
+
         # Get parameters
         self.class_name = self.get_parameter('class_name').value
         self.threshold = self.get_parameter('threshold').value
@@ -81,6 +85,10 @@ class TartsSegmentationNode(Node):
         self.otsu_method = self.get_parameter('otsu_method').value
         self.otsu_sigma = self.get_parameter('otsu_sigma').value
 
+        # Get model parameters
+        self.backbone_type = self.get_parameter('backbone_type').value
+        self.dropout_p = self.get_parameter('dropout_p').value
+
         # Check device availability
         if device == 'cuda' and not torch.cuda.is_available():
             self.get_logger().warn('CUDA not available, falling back to CPU')
@@ -91,6 +99,8 @@ class TartsSegmentationNode(Node):
         self.get_logger().info('TARTS Segmentation Node Initialization')
         self.get_logger().info('=' * 60)
         self.get_logger().info(f'Class name: {self.class_name}')
+        self.get_logger().info(f'Model backbone: {self.backbone_type}')
+        self.get_logger().info(f'Dropout probability: {self.dropout_p}')
         self.get_logger().info(f'Threshold method: {self.threshold_method}')
         if self.threshold_method == 'fixed':
             self.get_logger().info(f'Fixed threshold: {self.threshold}')
@@ -105,10 +115,10 @@ class TartsSegmentationNode(Node):
         self.engine = SegmentationEngine(
             input_size=self.input_size,
             device=self.device,
-            backbone_type='vits16',
+            backbone_type=self.backbone_type,
             slic_n_segments=self.slic_n_segments,
             slic_compactness=self.slic_compactness,
-            dropout_p=0.0,
+            dropout_p=self.dropout_p,
             threshold_method=self.threshold_method,
             otsu_nbins=self.otsu_nbins,
             otsu_method=self.otsu_method,
@@ -224,7 +234,7 @@ class TartsSegmentationNode(Node):
 
                 if self.debug:
                     self.get_logger().info(
-                        f'[Feature Extraction] Total: {t_total:.2f}ms'
+                        f'[Feature Extraction & Superpixel Generation] {t_total:.2f}ms'
                     )
 
                 # Put results into feature queue
@@ -256,8 +266,6 @@ class TartsSegmentationNode(Node):
                     self.get_logger().info(f'Matching thread processing first frame, features: {sparse_features.shape}')
                     first_frame = False
 
-                t_total_start = time.time()
-
                 # Publish feature data BEFORE matching (for prototype update node)
                 self._publish_features(sparse_features, seg, original_size, header)
 
@@ -283,13 +291,10 @@ class TartsSegmentationNode(Node):
                 )
                 t_vis = (time.time() - t_vis_start) * 1000  # ms
 
-                t_total = (time.time() - t_total_start) * 1000  # ms
-
                 if self.debug:
                     self.get_logger().info(
-                        f'[Matching] Match: {t_match:.2f}ms | '
-                        f'Vis: {t_vis:.2f}ms | '
-                        f'Total: {t_total:.2f}ms'
+                        f'[Aggregation & Comparison] {t_match:.2f}ms | '
+                        f'Visualization: {t_vis:.2f}ms'
                     )
 
                 # Publish results

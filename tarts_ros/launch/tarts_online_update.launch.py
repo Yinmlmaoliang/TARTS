@@ -44,13 +44,23 @@ def generate_launch_description():
     # Get launch configurations
     config_file = LaunchConfiguration('config_file')
 
+    # Declare launch argument for debug flag
+    debug_arg = DeclareLaunchArgument(
+        'debug',
+        default_value='false',
+        description='Enable debug output (true/false)'
+    )
+
+    # Get debug configuration
+    debug = LaunchConfiguration('debug')
+
     # Segmentation node - loads all parameters from config file
     segmentation_node = Node(
         package='tarts_ros',
         executable='tarts_segmentation',
         name='tarts_segmentation',
         output='screen',
-        parameters=[config_file],
+        parameters=[config_file, {'debug': debug}],
         remappings=[
             # Add any topic remappings here if needed
         ]
@@ -62,12 +72,13 @@ def generate_launch_description():
         executable='tarts_prototype_update',
         name='tarts_prototype_update',
         output='screen',
-        parameters=[config_file]
+        parameters=[config_file, {'debug': debug}]
     )
 
     return LaunchDescription([
         # Declare arguments
         config_file_arg,
+        debug_arg,
 
         # Launch nodes
         segmentation_node,

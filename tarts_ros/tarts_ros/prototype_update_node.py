@@ -208,8 +208,6 @@ class PrototypeUpdateNode(Node):
             if (self.cumulative_distance - self.last_updated_distance) >= self.update_interval:
                 if len(self.data_nodes) >= 2:  # Need at least 2 nodes for footprint
                     self._update_prototype(timestamp)
-                else:
-                    self.get_logger().debug(f'Not enough nodes for update: {len(self.data_nodes)}/2')
 
         except Exception as e:
             self.get_logger().error(f'Error in synchronized callback: {e}')
@@ -258,11 +256,6 @@ class PrototypeUpdateNode(Node):
 
                 self.last_cached_distance = self.cumulative_distance
 
-                self.get_logger().debug(
-                    f'Cached node - Distance: {self.cumulative_distance:.2f}m, '
-                    f'Cache size: {len(self.data_nodes)}/{self.cache_max_count}'
-                )
-
         except Exception as e:
             self.get_logger().error(f'Error caching node: {e}')
 
@@ -291,17 +284,10 @@ class PrototypeUpdateNode(Node):
                 prev_node = self._find_closest_node(target_distance)
 
             if prev_node is None:
-                self.get_logger().warn('Could not find previous node for footprint')
                 return
 
             # Generate footprint
             footprint, points, dimensions_info = current_node.make_footprint_with_node(prev_node)
-
-            self.get_logger().info(
-                f'Generating footprint - Length: {dimensions_info["length"]:.2f}m, '
-                f'Width: {dimensions_info["width"]:.2f}m, '
-                f'Points: {footprint.shape[0]}'
-            )
 
             # Select optimal prototype update node for projection
             optimal_prototype_update_node = self._select_optimal_prototype_update_from_cache(
@@ -309,7 +295,6 @@ class PrototypeUpdateNode(Node):
             )
 
             if optimal_prototype_update_node is None:
-                self.get_logger().warn('No suitable prototype update node found, skipping update')
                 return
 
             # Project footprint to image plane using optimal prototype update node
@@ -322,7 +307,6 @@ class PrototypeUpdateNode(Node):
 
             # Check if footprint is visible
             if bi_mask is None or bi_mask.sum() == 0:
-                self.get_logger().warn('Footprint not visible in image')
                 return
 
             # Extract positive features from footprint regions
@@ -332,10 +316,7 @@ class PrototypeUpdateNode(Node):
             )
 
             if pos_features.shape[0] == 0:
-                self.get_logger().warn('No positive features extracted from footprint')
                 return
-
-            self.get_logger().info(f'Extracted {pos_features.shape[0]} positive feature samples')
 
             # Update prototype with momentum
             with self.lock:
@@ -391,13 +372,6 @@ class PrototypeUpdateNode(Node):
 
             # Ensure on same device
             bi_mask = bi_mask.to(seg_tensor.device)
-
-            # Debug: log shapes
-            self.get_logger().debug(
-                f'Shape check - bi_mask: {bi_mask.shape}, '
-                f'seg_tensor: {seg_tensor.shape}, '
-                f'sparse_features: {sparse_features.shape}'
-            )
 
             # Get segment IDs covered by footprint
             footprint_segments = seg_tensor[bi_mask > 0.5]
@@ -461,12 +435,6 @@ class PrototypeUpdateNode(Node):
             # Sort candidates by distance (search from minimum observation distance)
             candidates.sort(key=lambda x: x[1])
 
-            self.get_logger().debug(
-                f'Evaluating {len(candidates)} candidate nodes for prototype update '
-                f'(min distance: {self.min_observation_distance}m, '
-                f'valid projection threshold: {self.valid_projection_threshold:.0%})'
-            )
-
             # Search for first node with valid projection ratio ≥ threshold
             for node, distance in candidates:
                 try:
@@ -481,28 +449,14 @@ class PrototypeUpdateNode(Node):
                     valid_count = valid_points.sum().item() if valid_points is not None else 0
                     valid_ratio = valid_count / total_points if total_points > 0 else 0.0
 
-                    self.get_logger().debug(
-                        f"Candidate evaluation - Distance: {distance:.2f}m, "
-                        f"Valid projection: {valid_ratio:.2%}"
-                    )
-
                     # Return first node meeting the threshold
                     if valid_ratio >= self.valid_projection_threshold:
-                        self.get_logger().info(
-                            f"Selected optimal prototype update node - Distance: {distance:.2f}m, "
-                            f"Valid projection: {valid_ratio:.2%}, "
-                            f"Time offset: {prev_node.timestamp - node.timestamp:.2f}s"
-                        )
                         return node
 
-                except Exception as projection_error:
-                    self.get_logger().debug(f"Node projection test failed: {projection_error}")
+                except Exception:
                     continue
 
             # No suitable node found
-            self.get_logger().warn(
-                f"No suitable prototype update node found - all candidates have valid projection < {self.valid_projection_threshold:.0%}"
-            )
             return None
 
         except Exception as e:
