@@ -35,6 +35,7 @@ import threading
 import os
 import time
 import math
+from collections import deque
 
 # Import message filters for synchronization
 import message_filters
@@ -77,11 +78,7 @@ class PrototypeUpdateNode(Node):
 
         # Prototype Update Node selection parameters
         self.declare_parameter('min_observation_distance', 1.0)
-        self.declare_parameter('high_quality_projection_threshold', 0.8)
-        self.declare_parameter('high_quality_depth_threshold', 0.9)
-        self.declare_parameter('fallback_projection_threshold', 0.5)
-        self.declare_parameter('fallback_depth_threshold', 0.7)
-        self.declare_parameter('perfect_projection_threshold', 0.95)
+        self.declare_parameter('valid_projection_threshold', 0.95)
 
         # Get parameters
         self.class_name = self.get_parameter('class_name').value
@@ -101,11 +98,7 @@ class PrototypeUpdateNode(Node):
 
         # Get prototype update node selection parameters
         self.min_observation_distance = self.get_parameter('min_observation_distance').value
-        self.high_quality_projection_threshold = self.get_parameter('high_quality_projection_threshold').value
-        self.high_quality_depth_threshold = self.get_parameter('high_quality_depth_threshold').value
-        self.fallback_projection_threshold = self.get_parameter('fallback_projection_threshold').value
-        self.fallback_depth_threshold = self.get_parameter('fallback_depth_threshold').value
-        self.perfect_projection_threshold = self.get_parameter('perfect_projection_threshold').value
+        self.valid_projection_threshold = self.get_parameter('valid_projection_threshold').value
 
         # Check device availability
         if device == 'cuda' and not torch.cuda.is_available():
@@ -136,7 +129,7 @@ class PrototypeUpdateNode(Node):
         self.last_odom_position = None
 
         # Node cache for footprint generation
-        self.data_nodes = []
+        self.data_nodes = deque(maxlen=self.cache_max_count)
         self.lock = threading.Lock()
 
         # Statistics
@@ -263,10 +256,6 @@ class PrototypeUpdateNode(Node):
                 with self.lock:
                     self.data_nodes.append(data_node)
 
-                    # Remove oldest if exceeds max count
-                    if len(self.data_nodes) > self.cache_max_count:
-                        self.data_nodes.pop(0)
-
                 self.last_cached_distance = self.cumulative_distance
 
                 self.get_logger().debug(
@@ -316,7 +305,7 @@ class PrototypeUpdateNode(Node):
 
             # Select optimal prototype update node for projection
             optimal_prototype_update_node = self._select_optimal_prototype_update_from_cache(
-                current_node, prev_node
+                current_node, prev_node, footprint
             )
 
             if optimal_prototype_update_node is None:
@@ -362,8 +351,12 @@ class PrototypeUpdateNode(Node):
             self.update_pub.publish(update_msg)
 
             # Save prototype after each update
-            self.prototype_manager.save(os.path.join(self.prototype_dir, f'{self.class_name}.pt'))
-            self.get_logger().info(f'Prototype saved to {os.path.join(self.prototype_dir, f"{self.class_name}.pt")}')
+            save_path = os.path.join(self.prototype_dir, f'{self.class_name}.pt')
+            self.prototype_manager.save(
+                prototype=self.prototype_manager.get_prototype(),
+                save_path=save_path
+            )
+            self.get_logger().info(f'Prototype saved to {save_path}')
 
             t_elapsed = (time.time() - t_start) * 1000
 
@@ -431,34 +424,28 @@ class PrototypeUpdateNode(Node):
             traceback.print_exc()
             return torch.empty((0, sparse_features.shape[1]), device=sparse_features.device)
 
-    def _select_optimal_prototype_update_from_cache(self, current_node, prev_node):
+    def _select_optimal_prototype_update_from_cache(self, current_node, prev_node, footprint):
         """
         Select optimal prototype update node from cache based on footprint projection validity.
 
-        This method finds the best node for projecting the footprint by:
-        1. Ensuring minimum observation distance (≥1m from footprint center)
-        2. Testing projection quality (valid point ratio and depth validity)
-        3. Using two-pass search (high-quality first, then fallback thresholds)
-        4. Early stopping if near-perfect projection found
+        This method finds the first suitable node for projecting the footprint by:
+        1. Ensuring time causality (timestamp < prev_node.timestamp)
+        2. Ensuring minimum observation distance (≥1m from footprint center)
+        3. Finding first node with valid projection ratio ≥ 95%
 
         Args:
             current_node: Current extract node
             prev_node: Previous node for footprint generation
+            footprint: The footprint polygon (N, 2)
 
         Returns:
-            DataNode: Best prototype update node or None if no suitable node found
+            DataNode: First suitable prototype update node or None if no suitable node found
         """
         try:
             # Calculate footprint center position
             current_pos = current_node.pose_base_in_world[:3, 3]
             prev_pos = prev_node.pose_base_in_world[:3, 3]
             footprint_center = (current_pos + prev_pos) / 2
-
-            # Generate footprint points for projection testing
-            footprint, _, _ = current_node.make_footprint_with_node(prev_node)
-
-            best_node = None
-            best_score = 0.0  # Higher score is better (valid projection point ratio)
 
             # Build candidate list: filter by time causality and minimum observation distance
             candidates = []
@@ -476,10 +463,11 @@ class PrototypeUpdateNode(Node):
 
             self.get_logger().debug(
                 f'Evaluating {len(candidates)} candidate nodes for prototype update '
-                f'(min distance: {self.min_observation_distance}m)'
+                f'(min distance: {self.min_observation_distance}m, '
+                f'valid projection threshold: {self.valid_projection_threshold:.0%})'
             )
 
-            # First pass: search for high-quality projection nodes
+            # Search for first node with valid projection ratio ≥ threshold
             for node, distance in candidates:
                 try:
                     # Test footprint projection validity on this node
@@ -493,85 +481,29 @@ class PrototypeUpdateNode(Node):
                     valid_count = valid_points.sum().item() if valid_points is not None else 0
                     valid_ratio = valid_count / total_points if total_points > 0 else 0.0
 
-                    # Calculate depth validity (points in front of camera)
-                    depth_valid_count = valid_z.sum().item() if valid_z is not None else 0
-                    depth_valid_ratio = depth_valid_count / total_points if total_points > 0 else 0.0
+                    self.get_logger().debug(
+                        f"Candidate evaluation - Distance: {distance:.2f}m, "
+                        f"Valid projection: {valid_ratio:.2%}"
+                    )
 
-                    # Score candidates: prioritize projection validity, then distance
-                    # Only consider nodes with most points validly projected
-                    if (valid_ratio >= self.high_quality_projection_threshold and
-                        depth_valid_ratio >= self.high_quality_depth_threshold):
-
-                        # Distance penalty: closer nodes (within minimum distance) slightly preferred
-                        distance_penalty = (distance - self.min_observation_distance) * 0.1
-                        score = valid_ratio - distance_penalty
-
-                        if score > best_score:
-                            best_score = score
-                            best_node = node
-
-                        self.get_logger().debug(
-                            f"Candidate evaluation - Distance: {distance:.2f}m, "
+                    # Return first node meeting the threshold
+                    if valid_ratio >= self.valid_projection_threshold:
+                        self.get_logger().info(
+                            f"Selected optimal prototype update node - Distance: {distance:.2f}m, "
                             f"Valid projection: {valid_ratio:.2%}, "
-                            f"Valid depth: {depth_valid_ratio:.2%}, "
-                            f"Score: {score:.3f}"
+                            f"Time offset: {prev_node.timestamp - node.timestamp:.2f}s"
                         )
-
-                        # Early stopping if near-perfect projection found
-                        if valid_ratio >= self.perfect_projection_threshold:
-                            self.get_logger().debug("Found near-perfect projection, early stop")
-                            break
+                        return node
 
                 except Exception as projection_error:
                     self.get_logger().debug(f"Node projection test failed: {projection_error}")
                     continue
 
-            # Second pass: if no high-quality node found, lower standards and search again
-            if best_node is None:
-                self.get_logger().debug(
-                    "No high-quality projection node found, searching with fallback thresholds"
-                )
-                for node, distance in candidates:
-                    try:
-                        pose_batch = node.pose_cam_in_world.unsqueeze(0)
-                        projected_points, valid_points, valid_z = node.image_projector.project(
-                            pose_batch, footprint[None]
-                        )
-
-                        total_points = footprint.shape[0]
-                        valid_count = valid_points.sum().item() if valid_points is not None else 0
-                        valid_ratio = valid_count / total_points if total_points > 0 else 0.0
-                        depth_valid_count = valid_z.sum().item() if valid_z is not None else 0
-                        depth_valid_ratio = depth_valid_count / total_points if total_points > 0 else 0.0
-
-                        # Lower standards: use fallback thresholds
-                        if (valid_ratio >= self.fallback_projection_threshold and
-                            depth_valid_ratio >= self.fallback_depth_threshold):
-
-                            distance_penalty = (distance - self.min_observation_distance) * 0.1
-                            score = valid_ratio - distance_penalty
-
-                            if score > best_score:
-                                best_score = score
-                                best_node = node
-
-                    except Exception:
-                        continue
-
-            if best_node is not None:
-                node_pos = best_node.pose_base_in_world[:3, 3]
-                actual_distance = torch.norm(node_pos - footprint_center).item()
-                self.get_logger().info(
-                    f"Selected optimal prototype update node - Distance: {actual_distance:.2f}m, "
-                    f"Projection quality score: {best_score:.3f}, "
-                    f"Time offset: {prev_node.timestamp - best_node.timestamp:.2f}s"
-                )
-            else:
-                self.get_logger().warn(
-                    "No suitable prototype update node found - all candidates have poor projection quality"
-                )
-
-            return best_node
+            # No suitable node found
+            self.get_logger().warn(
+                f"No suitable prototype update node found - all candidates have valid projection < {self.valid_projection_threshold:.0%}"
+            )
+            return None
 
         except Exception as e:
             self.get_logger().error(f"Error selecting optimal prototype update from cache: {e}")

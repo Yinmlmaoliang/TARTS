@@ -84,34 +84,10 @@ def generate_launch_description():
         description='Minimum observation distance for prototype update node (meters)'
     )
 
-    high_quality_projection_threshold_arg = DeclareLaunchArgument(
-        'high_quality_projection_threshold',
-        default_value='0.8',
-        description='High-quality projection threshold [0.0-1.0]'
-    )
-
-    high_quality_depth_threshold_arg = DeclareLaunchArgument(
-        'high_quality_depth_threshold',
-        default_value='0.9',
-        description='High-quality depth threshold [0.0-1.0]'
-    )
-
-    fallback_projection_threshold_arg = DeclareLaunchArgument(
-        'fallback_projection_threshold',
-        default_value='0.5',
-        description='Fallback projection threshold [0.0-1.0]'
-    )
-
-    fallback_depth_threshold_arg = DeclareLaunchArgument(
-        'fallback_depth_threshold',
-        default_value='0.7',
-        description='Fallback depth threshold [0.0-1.0]'
-    )
-
-    perfect_projection_threshold_arg = DeclareLaunchArgument(
-        'perfect_projection_threshold',
+    valid_projection_threshold_arg = DeclareLaunchArgument(
+        'valid_projection_threshold',
         default_value='0.95',
-        description='Perfect projection threshold for early stopping [0.0-1.0]'
+        description='Valid projection threshold for footprint visibility [0.0-1.0]'
     )
 
     # Get launch configurations
@@ -125,11 +101,7 @@ def generate_launch_description():
     image_topic = LaunchConfiguration('image_topic')
     debug = LaunchConfiguration('debug')
     min_observation_distance = LaunchConfiguration('min_observation_distance')
-    high_quality_projection_threshold = LaunchConfiguration('high_quality_projection_threshold')
-    high_quality_depth_threshold = LaunchConfiguration('high_quality_depth_threshold')
-    fallback_projection_threshold = LaunchConfiguration('fallback_projection_threshold')
-    fallback_depth_threshold = LaunchConfiguration('fallback_depth_threshold')
-    perfect_projection_threshold = LaunchConfiguration('perfect_projection_threshold')
+    valid_projection_threshold = LaunchConfiguration('valid_projection_threshold')
 
     # Segmentation node
     segmentation_node = Node(
@@ -176,11 +148,7 @@ def generate_launch_description():
             'debug': debug,
             # Prototype Update Node selection parameters
             'min_observation_distance': min_observation_distance,
-            'high_quality_projection_threshold': high_quality_projection_threshold,
-            'high_quality_depth_threshold': high_quality_depth_threshold,
-            'fallback_projection_threshold': fallback_projection_threshold,
-            'fallback_depth_threshold': fallback_depth_threshold,
-            'perfect_projection_threshold': perfect_projection_threshold,
+            'valid_projection_threshold': valid_projection_threshold,
         }]
     )
 
@@ -196,11 +164,7 @@ def generate_launch_description():
         image_topic_arg,
         debug_arg,
         min_observation_distance_arg,
-        high_quality_projection_threshold_arg,
-        high_quality_depth_threshold_arg,
-        fallback_projection_threshold_arg,
-        fallback_depth_threshold_arg,
-        perfect_projection_threshold_arg,
+        valid_projection_threshold_arg,
 
         # Launch nodes
         segmentation_node,
