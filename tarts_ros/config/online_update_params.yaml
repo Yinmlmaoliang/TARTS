@@ -1,0 +1,116 @@
+/**:
+  ros__parameters:
+    # Object class name
+    class_name: 'corn'
+
+    # Similarity threshold for binary mask generation
+    threshold: 0.5
+
+    # Device to use ('cuda' or 'cpu')
+    device: 'cuda'
+
+    # Input image size (images will be resized to input_size x input_size)
+    input_size: 480
+
+    # Directory containing prototype files
+    prototype_dir: '~/.ros/tarts_prototypes'
+
+    # SLIC superpixel parameters
+    slic_n_segments: 400
+    slic_compactness: 30.0
+
+    # Input image topic
+    image_topic: '/camera/color/image_raw'
+
+    # Visualization alpha blending value
+    visualization_alpha: 0.5
+
+    # Enable debug output
+    debug: false
+
+    # --- Online Prototype Update Parameters ---
+
+    # Momentum coefficient for exponential moving average [0.0-1.0]
+    # Higher values = slower adaptation (0.9 means 90% old + 10% new)
+    momentum: 0.9
+
+    # Distance interval for prototype updates (meters)
+    # Update prototype every X meters traveled
+    update_interval: 0.5
+
+    # Distance interval for node caching (meters)
+    # Cache robot poses every X meters for footprint generation
+    cache_interval: 0.1
+
+    # Maximum number of nodes to cache (FIFO queue)
+    # 30 nodes at 0.1m interval = 3 meters of history
+    cache_max_count: 30
+
+    # --- Robot Parameters ---
+
+    # Robot dimensions (meters)
+    robot_length: 0.627
+    robot_width: 0.549
+    robot_height: 0.248
+
+    # --- Camera Extrinsics (camera in base_link frame) ---
+
+    # Camera translation [x, y, z] (meters)
+    camera_translation: [0.2, 0.0, 0.41]
+
+    # Camera rotation as quaternion [x, y, z, w]
+    # Default: no rotation (identity quaternion)
+    camera_rotation: [0.0, 0.0, 0.0, 1.0]
+
+    # --- Optimal Supervision Node Selection Parameters ---
+    # 最佳监督节点选择参数
+    #
+    # These parameters control the intelligent selection of supervision nodes
+    # for footprint projection, ensuring good visibility and projection quality.
+    # 这些参数控制监督节点的智能选择，以确保良好的可见性和投影质量。
+
+    # Minimum observation distance (meters)
+    # 最小观察距离（米）
+    # The minimum distance from footprint center to supervision node.
+    # Ensures footprint is within camera field of view (1m+ recommended).
+    # 从足迹中心到监督节点的最小距离。
+    # 确保足迹在相机视野内（推荐1米以上）。
+    min_observation_distance: 1.0
+
+    # High-quality projection threshold [0.0-1.0]
+    # 高质量投影阈值 [0.0-1.0]
+    # Ratio of footprint points that must project validly into image.
+    # First pass: only nodes with ≥80% valid projection are considered.
+    # 足迹点有效投影到图像中的比例。
+    # 第一遍搜索：只考虑≥80%有效投影的节点。
+    high_quality_projection_threshold: 0.8
+
+    # High-quality depth threshold [0.0-1.0]
+    # 高质量深度阈值 [0.0-1.0]
+    # Ratio of footprint points that must be in front of camera (positive depth).
+    # First pass: only nodes with ≥90% valid depth are considered.
+    # 足迹点位于相机前方（正深度）的比例。
+    # 第一遍搜索：只考虑≥90%有效深度的节点。
+    high_quality_depth_threshold: 0.9
+
+    # Fallback projection threshold [0.0-1.0]
+    # 备选投影阈值 [0.0-1.0]
+    # If no high-quality nodes found, lower threshold to 50% in second pass.
+    # Prevents update failure when camera viewing conditions are suboptimal.
+    # 如果未找到高质量节点，在第二遍搜索中降低阈值至50%。
+    # 防止相机观察条件不理想时更新失败。
+    fallback_projection_threshold: 0.5
+
+    # Fallback depth threshold [0.0-1.0]
+    # 备选深度阈值 [0.0-1.0]
+    # If no high-quality nodes found, lower depth threshold to 70% in second pass.
+    # 如果未找到高质量节点，在第二遍搜索中降低深度阈值至70%。
+    fallback_depth_threshold: 0.7
+
+    # Perfect projection threshold [0.0-1.0]
+    # 完美投影阈值 [0.0-1.0]
+    # Early stopping: if node has ≥95% valid projection, stop searching.
+    # Improves efficiency by avoiding unnecessary candidate evaluation.
+    # 提前停止：如果节点有≥95%有效投影，停止搜索。
+    # 通过避免不必要的候选评估来提高效率。
+    perfect_projection_threshold: 0.95

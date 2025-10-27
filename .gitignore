@@ -141,4 +141,8 @@ build/
 *~
 
 # Specific files to ignore
-tarts_core/tarts/engine0.py
+tarts_core/tarts/engine.py
+reference-code/
+CLAUDE.md
+examples/
+ONLINE_UPDATE_README.md

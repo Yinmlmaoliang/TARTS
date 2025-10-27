@@ -34,6 +34,9 @@ from tarts_core.utils.visualization import create_mask_overlay
 # Import ROS image utilities
 from .image_utils import ros_image_to_numpy, numpy_to_ros_image, mask_to_ros_image
 
+# Import custom messages
+from tarts_msgs.msg import FeatureData
+
 
 class TartsSegmentationNode(Node):
     """TARTS segmentation pipeline with multi-threading."""
@@ -99,8 +102,8 @@ class TartsSegmentationNode(Node):
         # Load prototype
         prototype_path = os.path.join(prototype_dir, f'{self.class_name}.pt')
         self.get_logger().info(f'Loading prototype: {prototype_path}')
-        prototype_manager = PrototypeManager(device=self.device)
-        self.prototype = prototype_manager.load(prototype_path, verbose=False)
+        self.prototype_manager = PrototypeManager(device=self.device)
+        self.prototype = self.prototype_manager.load(prototype_path, verbose=False)
         self.get_logger().info(f'Prototype loaded successfully')
 
         # Threading queues
@@ -124,6 +127,15 @@ class TartsSegmentationNode(Node):
         self.mask_pub = self.create_publisher(Image, '/tarts/mask', 10)
         self.vis_pub = self.create_publisher(Image, '/tarts/visualized', 10)
         self.similarity_pub = self.create_publisher(Float32, '/tarts/similarity', 10)
+        self.feature_pub = self.create_publisher(FeatureData, '/tarts/features', 10)
+
+        # Subscribe to prototype updates (for online adaptation)
+        self.prototype_update_sub = self.create_subscription(
+            Float32,  # Placeholder - will receive update notifications
+            '/tarts/prototype_updated',
+            self._prototype_update_callback,
+            10
+        )
 
         self.get_logger().info('=' * 60)
         self.get_logger().info('Pipeline ready!')
@@ -225,10 +237,16 @@ class TartsSegmentationNode(Node):
 
                 t_total_start = time.time()
 
+                # Publish feature data BEFORE matching (for prototype update node)
+                self._publish_features(sparse_features, seg, original_size, header)
+
                 # Match and generate mask using TARTS engine
                 t_match_start = time.time()
+                # Use current prototype (may be updated by prototype_update_node)
+                with self.lock:
+                    current_prototype = self.prototype_manager.get_prototype()
                 mask_original, avg_similarity = self.engine.match_and_generate_mask(
-                    sparse_features, seg, self.prototype, self.threshold, original_size
+                    sparse_features, seg, current_prototype, self.threshold, original_size
                 )
                 t_match = (time.time() - t_match_start) * 1000  # ms
 
@@ -270,6 +288,36 @@ class TartsSegmentationNode(Node):
                 self.get_logger().error(f'Error in matching: {e}')
                 import traceback
                 traceback.print_exc()
+
+    def _publish_features(self, sparse_features, seg_tensor, original_size, header):
+        """Publish feature data for prototype update node."""
+        try:
+            feature_msg = FeatureData()
+            feature_msg.header = header
+
+            # Flatten and convert sparse features
+            feature_msg.sparse_features = sparse_features.cpu().flatten().numpy().tolist()
+            feature_msg.sparse_features_shape = [int(d) for d in sparse_features.shape]
+
+            # Flatten and convert segmentation tensor
+            feature_msg.seg_tensor = seg_tensor.cpu().flatten().int().numpy().tolist()
+            feature_msg.seg_tensor_shape = [int(d) for d in seg_tensor.shape]
+
+            # Add image metadata
+            feature_msg.original_height = int(original_size[0])
+            feature_msg.original_width = int(original_size[1])
+            feature_msg.resized_size = int(self.input_size)
+
+            self.feature_pub.publish(feature_msg)
+
+        except Exception as e:
+            self.get_logger().error(f'Error publishing features: {e}')
+
+    def _prototype_update_callback(self, msg):
+        """Handle prototype update notifications from prototype_update_node."""
+        # The prototype is updated in PrototypeManager, just log notification
+        with self.lock:
+            self.get_logger().info('Prototype updated by online adaptation')
 
     def _publish_results(self, mask, vis_img, avg_similarity, header):
         """Publish segmentation results."""

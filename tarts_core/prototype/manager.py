@@ -32,6 +32,9 @@ class PrototypeManager:
             print('Warning: CUDA not available, falling back to CPU')
             self.device = 'cpu'
 
+        # Current prototype (for online update)
+        self.prototype = None
+
     def load(self, prototype_path, normalize=True, verbose=True):
         """
         Load prototype from file.
@@ -76,6 +79,9 @@ class PrototypeManager:
             print(f'  Shape: {prototype.shape}')
             print(f'  Norm: {torch.norm(prototype).item():.4f}')
             print(f'  Device: {prototype.device}')
+
+        # Store as current prototype
+        self.prototype = prototype
 
         return prototype
 
@@ -229,3 +235,101 @@ class PrototypeManager:
 
         print(f'Loaded {len(prototypes)} prototypes from {prototype_dir}')
         return prototypes
+
+    def update_with_momentum(self, pos_features, momentum=0.9):
+        """
+        Update prototype using exponential moving average with positive sample features.
+
+        This method implements online prototype adaptation using a momentum-based update:
+        prototype_new = momentum * prototype_old + (1 - momentum) * prototype_current
+
+        Args:
+            pos_features (torch.Tensor): Positive sample features (N, C) from footprint regions
+            momentum (float): Momentum coefficient [0, 1]. Higher values = slower adaptation.
+                             Default 0.9 means 90% old + 10% new.
+
+        Returns:
+            torch.Tensor: Updated prototype (C,)
+
+        Raises:
+            ValueError: If prototype hasn't been initialized (call load() first)
+            ValueError: If pos_features is empty or invalid
+        """
+        if self.prototype is None:
+            raise ValueError('Prototype not initialized. Call load() first.')
+
+        if not isinstance(pos_features, torch.Tensor):
+            raise ValueError(f'pos_features must be torch.Tensor, got {type(pos_features)}')
+
+        if pos_features.dim() != 2:
+            raise ValueError(f'pos_features must be 2D (N, C), got shape {pos_features.shape}')
+
+        if pos_features.shape[0] == 0:
+            raise ValueError('pos_features is empty (no positive samples)')
+
+        # Check feature dimension matches prototype
+        if pos_features.shape[1] != self.prototype.shape[0]:
+            raise ValueError(
+                f'Feature dimension mismatch: pos_features has {pos_features.shape[1]}, '
+                f'prototype has {self.prototype.shape[0]}'
+            )
+
+        # Move to same device as prototype
+        pos_features = pos_features.to(self.prototype.device)
+
+        # Compute current prototype from positive features (mean aggregation)
+        current_prototype = torch.mean(pos_features, dim=0)  # (C,)
+        current_prototype = F.normalize(current_prototype, p=2, dim=0)
+
+        # Update with momentum (exponential moving average)
+        with torch.no_grad():
+            self.prototype = momentum * self.prototype + (1 - momentum) * current_prototype
+            self.prototype = F.normalize(self.prototype, p=2, dim=0)
+
+        return self.prototype
+
+    def get_prototype(self):
+        """
+        Get current prototype.
+
+        Returns:
+            torch.Tensor: Current prototype (C,)
+
+        Raises:
+            ValueError: If prototype hasn't been initialized
+        """
+        if self.prototype is None:
+            raise ValueError('Prototype not initialized. Call load() first.')
+        return self.prototype
+
+    def set_prototype(self, prototype, normalize=True):
+        """
+        Set prototype directly (for online updates from external source).
+
+        Args:
+            prototype (torch.Tensor): Prototype feature vector (C,)
+            normalize (bool): Whether to L2-normalize
+
+        Returns:
+            torch.Tensor: Set prototype
+        """
+        # Ensure tensor
+        if not isinstance(prototype, torch.Tensor):
+            raise ValueError(f'Prototype must be torch.Tensor, got {type(prototype)}')
+
+        # Ensure 1D
+        if prototype.dim() > 1:
+            prototype = prototype.squeeze()
+
+        if prototype.dim() != 1:
+            raise ValueError(f'Prototype must be 1D vector, got shape {prototype.shape}')
+
+        # Move to device
+        prototype = prototype.to(self.device)
+
+        # Normalize
+        if normalize:
+            prototype = F.normalize(prototype, p=2, dim=0)
+
+        self.prototype = prototype
+        return self.prototype
