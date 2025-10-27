@@ -3,8 +3,28 @@
     # Object class name
     class_name: 'corn'
 
-    # Similarity threshold for binary mask generation
+    # Similarity threshold for binary mask generation (used only when threshold_method='fixed')
     threshold: 0.5
+
+    # Thresholding method: 'fixed' or 'otsu'
+    # - 'fixed': Use the fixed threshold value specified above
+    # - 'otsu': Use adaptive Otsu thresholding based on similarity distribution
+    threshold_method: 'otsu'
+
+    # --- Otsu Thresholding Parameters (used only when threshold_method='otsu') ---
+
+    # Number of histogram bins for Otsu algorithm
+    otsu_nbins: 100
+
+    # Otsu method variant:
+    # - 'standard': Standard Otsu (recommended, numerically stable)
+    # - 'original': Original implementation (legacy compatibility)
+    # - 'valley_emphasis': Favors valley points in histogram
+    # - 'valley_deepness': Weighted by valley depth measure
+    otsu_method: 'valley_emphasis'
+
+    # Gaussian smoothing sigma for 'valley_deepness' method
+    otsu_sigma: 1.0
 
     # Device to use ('cuda' or 'cpu')
     device: 'cuda'

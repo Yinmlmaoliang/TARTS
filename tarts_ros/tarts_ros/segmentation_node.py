@@ -56,6 +56,12 @@ class TartsSegmentationNode(Node):
         self.declare_parameter('visualization_alpha', 0.5)
         self.declare_parameter('debug', False)
 
+        # Otsu threshold parameters
+        self.declare_parameter('threshold_method', 'fixed')
+        self.declare_parameter('otsu_nbins', 256)
+        self.declare_parameter('otsu_method', 'standard')
+        self.declare_parameter('otsu_sigma', 1.0)
+
         # Get parameters
         self.class_name = self.get_parameter('class_name').value
         self.threshold = self.get_parameter('threshold').value
@@ -69,6 +75,12 @@ class TartsSegmentationNode(Node):
         self.vis_alpha = self.get_parameter('visualization_alpha').value
         self.debug = self.get_parameter('debug').value
 
+        # Get Otsu parameters
+        self.threshold_method = self.get_parameter('threshold_method').value
+        self.otsu_nbins = self.get_parameter('otsu_nbins').value
+        self.otsu_method = self.get_parameter('otsu_method').value
+        self.otsu_sigma = self.get_parameter('otsu_sigma').value
+
         # Check device availability
         if device == 'cuda' and not torch.cuda.is_available():
             self.get_logger().warn('CUDA not available, falling back to CPU')
@@ -79,7 +91,11 @@ class TartsSegmentationNode(Node):
         self.get_logger().info('TARTS Segmentation Node Initialization')
         self.get_logger().info('=' * 60)
         self.get_logger().info(f'Class name: {self.class_name}')
-        self.get_logger().info(f'Threshold: {self.threshold}')
+        self.get_logger().info(f'Threshold method: {self.threshold_method}')
+        if self.threshold_method == 'fixed':
+            self.get_logger().info(f'Fixed threshold: {self.threshold}')
+        else:
+            self.get_logger().info(f'Otsu method: {self.otsu_method}, nbins: {self.otsu_nbins}')
         self.get_logger().info(f'Device: {self.device}')
         self.get_logger().info(f'Input size: {self.input_size}')
         self.get_logger().info(f'SLIC segments: {self.slic_n_segments}')
@@ -92,7 +108,11 @@ class TartsSegmentationNode(Node):
             backbone_type='vits16',
             slic_n_segments=self.slic_n_segments,
             slic_compactness=self.slic_compactness,
-            dropout_p=0.0
+            dropout_p=0.0,
+            threshold_method=self.threshold_method,
+            otsu_nbins=self.otsu_nbins,
+            otsu_method=self.otsu_method,
+            otsu_sigma=self.otsu_sigma
         )
 
         engine_info = self.engine.get_info()

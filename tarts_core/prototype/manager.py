@@ -58,7 +58,9 @@ class PrototypeManager:
             raise FileNotFoundError(f'Prototype not found: {prototype_path}')
 
         # Load checkpoint
-        checkpoint = torch.load(prototype_path, map_location=self.device)
+        # Note: weights_only=False is needed for prototypes that contain metadata dicts
+        # This is safe as we trust prototype files from our own system
+        checkpoint = torch.load(prototype_path, map_location=self.device, weights_only=False)
 
         # Extract prototype
         if 'prototype' not in checkpoint:
