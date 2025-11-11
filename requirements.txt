@@ -1,0 +1,24 @@
+# Core Dependencies for TARTS
+# Template-Assisted Reference-based Target Segmentation
+
+# Deep Learning Framework
+torch>=2.0.0
+torchvision>=0.15.0
+
+# Computer Vision
+opencv-python>=4.8.0
+Pillow>=10.0.0
+
+# Scientific Computing
+numpy>=1.24.0
+scipy>=1.10.0
+
+# Image Segmentation
+fast-slic>=0.4.0
+
+# Visualization
+matplotlib>=3.7.0
+
+# Geometry and Robotics (for footprint projection)
+kornia>=0.7.0
+liegroups@git+https://github.com/mmattamala/liegroups

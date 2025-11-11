@@ -1,0 +1,63 @@
+/**:
+  ros__parameters:
+    # Object class name
+    class_name: 'cornvitb16'
+
+    # Similarity threshold for binary mask generation (used only when threshold_method='fixed')
+    threshold: 0.5
+
+    # Thresholding method: 'fixed' or 'otsu'
+    # - 'fixed': Use the fixed threshold value specified above
+    # - 'otsu': Use adaptive Otsu thresholding based on similarity distribution
+    threshold_method: 'otsu'
+
+    # --- Otsu Thresholding Parameters (used only when threshold_method='otsu') ---
+
+    # Number of histogram bins for Otsu algorithm
+    otsu_nbins: 100
+
+    # Otsu method variant:
+    # - 'standard': Standard Otsu (recommended, numerically stable)
+    # - 'original': Original implementation (legacy compatibility)
+    # - 'valley_emphasis': Favors valley points in histogram
+    # - 'valley_deepness': Weighted by valley depth measure
+    otsu_method: 'valley_emphasis'
+
+    # Gaussian smoothing sigma for 'valley_deepness' method
+    otsu_sigma: 1.0
+
+    # Device to use ('cuda' or 'cpu')
+    device: 'cuda'
+
+    # Input image size (images will be resized to input_size x input_size)
+    input_size: 480
+
+    # --- Model Parameters ---
+
+    # Backbone model type:
+    # - 'vits16': ViT-Small with patch size 16 (default, balanced performance)
+    # - 'vitb16': ViT-Base with patch size 16 (higher capacity)
+    # - 'vits16plus': ViT-Small with patch size 16 and larger model (higher capacity)
+    # - 'vitl16': ViT-Large with patch size 16 (highest capacity)
+    backbone_type: 'vitb16'
+
+    # Dropout probability for feature extractor (0.0-1.0)
+    # - 0.0: No dropout (default, for inference)
+    # - >0.0: Enable dropout (for training/uncertainty estimation)
+    dropout_p: 0.0
+
+    # Directory containing prototype files
+    prototype_dir: '~/.ros/tarts_prototypes'
+
+    # SLIC superpixel parameters
+    slic_n_segments: 400
+    slic_compactness: 30.0
+
+    # Input image topic
+    image_topic: '/camera/color/image_raw'
+
+    # Visualization alpha blending value
+    visualization_alpha: 0.5
+
+    # Enable debug output
+    debug: false

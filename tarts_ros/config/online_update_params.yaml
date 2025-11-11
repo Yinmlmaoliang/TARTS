@@ -1,0 +1,112 @@
+/**:
+  ros__parameters:
+    # Object class name
+    class_name: 'dirt'
+
+    # Similarity threshold for binary mask generation (used only when threshold_method='fixed')
+    threshold: 0.5
+
+    # Thresholding method: 'fixed' or 'otsu'
+    # - 'fixed': Use the fixed threshold value specified above
+    # - 'otsu': Use adaptive Otsu thresholding based on similarity distribution
+    threshold_method: 'otsu'
+
+    # --- Otsu Thresholding Parameters (used only when threshold_method='otsu') ---
+
+    # Number of histogram bins for Otsu algorithm
+    otsu_nbins: 100
+
+    # Otsu method variant:
+    # - 'standard': Standard Otsu (recommended, numerically stable)
+    # - 'original': Original implementation (legacy compatibility)
+    # - 'valley_emphasis': Favors valley points in histogram
+    # - 'valley_deepness': Weighted by valley depth measure
+    otsu_method: 'valley_emphasis'
+
+    # Gaussian smoothing sigma for 'valley_deepness' method
+    otsu_sigma: 1.0
+
+    # Device to use ('cuda' or 'cpu')
+    device: 'cuda'
+
+    # Input image size (images will be resized to input_size x input_size)
+    input_size: 480
+    
+    # --- Model Parameters ---
+
+    # Backbone model type:
+    # - 'vits16': ViT-Small with patch size 16 (default, balanced performance)
+    # - 'vitb16': ViT-Base with patch size 16 (higher capacity)
+    # - 'vits16plus': ViT-Small with patch size 16 and larger model (higher capacity)
+    # - 'vitl16': ViT-Large with patch size 16 (highest capacity)
+    backbone_type: 'vits16'
+
+    # Dropout probability for feature extractor (0.0-1.0)
+    # - 0.0: No dropout (default, for inference)
+    # - >0.0: Enable dropout (for training/uncertainty estimation)
+    dropout_p: 0.0
+    # Directory containing prototype files
+    prototype_dir: '~/.ros/tarts_prototypes'
+
+    # SLIC superpixel parameters
+    slic_n_segments: 400
+    slic_compactness: 30.0
+
+    # Input image topic
+    image_topic: '/camera/color/image_raw'
+
+    # Visualization alpha blending value
+    visualization_alpha: 0.5
+
+    # Enable debug output
+    debug: false
+
+    # --- Online Prototype Update Parameters ---
+
+    # Momentum coefficient for exponential moving average [0.0-1.0]
+    # Higher values = slower adaptation (0.9 means 90% old + 10% new)
+    momentum: 0.9
+
+    # Distance interval for prototype updates (meters)
+    # Update prototype every X meters traveled
+    update_interval: 0.5
+
+    # Distance interval for node caching (meters)
+    # Cache robot poses every X meters for footprint generation
+    cache_interval: 0.1
+
+    # Maximum number of nodes to cache (FIFO queue)
+    # 30 nodes at 0.1m interval = 3 meters of history
+    cache_max_count: 30
+
+    # --- Robot Parameters ---
+
+    # Robot dimensions (meters)
+    robot_length: 0.627
+    robot_width: 0.549
+    robot_height: 0.248
+
+    # --- Camera Extrinsics (camera in base_link frame) ---
+
+    # Camera translation [x, y, z] (meters)
+    camera_translation: [0.2, 0.0, 0.41]
+
+    # Camera rotation as quaternion [x, y, z, w]
+    # Default: no rotation (identity quaternion)
+    camera_rotation: [0.0, 0.0, 0.0, 1.0]
+
+    # --- Optimal Prototype Update Node Selection Parameters ---
+    #
+    # These parameters control the intelligent selection of prototype update nodes
+    # for footprint projection, ensuring good visibility and projection quality.
+
+    # Minimum observation distance (meters)
+    # The minimum distance from footprint center to prototype update node.
+    # Ensures footprint is within camera field of view (1m+ recommended).
+    min_observation_distance: 1.0
+
+    # Valid projection threshold [0.0-1.0]
+    # Ratio of footprint points that must project validly into image.
+    # First node with valid projection ratio ≥ this threshold is selected.
+    # Recommended: 0.95 (95% of footprint visible in camera view)
+    valid_projection_threshold: 0.95
