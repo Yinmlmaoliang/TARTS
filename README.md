@@ -213,19 +213,6 @@ TARTS/
 └── reference-code/          # Reference implementations
 ```
 
-## Citation
-
-If you use TARTS in your research, please cite:
-
-```bibtex
-@article{yin2024tarts,
-  title={TARTS: Training-free Adaptive Reference-guided Traversability Segmentation with Automated Footprint Supervision},
-  author={Yin, Maoliang and Hua, Changchun},
-  journal={Under Review},
-  year={2025}
-}
-```
-
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
